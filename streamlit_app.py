@@ -45,77 +45,86 @@ if st.checkbox("Run Full-Body Character Detection"):
 from character_mapper import map_dialogues_to_characters
 
 if dialogues and char_boxes:
+    # Step 3: Dialogue-to-Character Mapping
     st.markdown("### 🧭 Step 3: Dialogue-to-Character Mapping")
     mapping_result = map_dialogues_to_characters(dialogues, char_boxes)
 
     for item in mapping_result:
         st.write(f"🗣️ Character #{item['character_id']} says: **{item['text']}** (Conf: {item['confidence']:.2f})")
-else:
-    st.warning("Please run both dialogue and character detection before mapping.")
 
+    # Step 4: Manual Character Naming
+    st.markdown("### 🧍 Step 4: Assign Names to Characters")
+    if 'character_names' not in st.session_state:
+        st.session_state.character_names = {}
 
-# Character Naming (Step 4)
-if dialogues and char_boxes:
-    st.markdown("### 🏷️ Step 4: Assign Names to Characters")
+    character_names = st.session_state.character_names
 
-    # Initialize session state to persist character names
-    if "char_names" not in st.session_state:
-        st.session_state.char_names = {}
+    for idx in set(item['character_id'] for item in mapping_result):
+        key = f"charname_{idx}"
+        default_name = character_names.get(idx, f"Character #{idx}")
+        character_names[idx] = st.text_input(f"Enter name for Character #{idx}:", value=default_name, key=key)
 
-    for idx, char in enumerate(char_boxes):
-        default_name = st.session_state.char_names.get(idx, f"Character {idx}")
-        name = st.text_input(f"Enter name for Character #{idx}:", value=default_name, key=f"char_name_{idx}")
-        st.session_state.char_names[idx] = name
+    st.session_state.character_names = character_names  # persist names
 
-    st.markdown("---")
-    st.markdown("### 🗣️ Final Mapping with Character Names")
+    # Step 4.5: Editable Dialogue Text
+    st.markdown("### 📝 Step 4.5: Edit Assigned Dialogues")
 
-    for item in mapping_result:
+    if 'edited_dialogues' not in st.session_state:
+        st.session_state.edited_dialogues = {}
+
+    edited_dialogues = []
+
+    for idx, item in enumerate(mapping_result):
         char_id = item['character_id']
-        name = st.session_state.char_names.get(char_id, f"Character {char_id}")
-        st.write(f"🗣️ **{name}** says: *{item['text']}* (Conf: {item['confidence']:.2f})")
+        char_name = character_names.get(char_id, f"Character #{char_id}")
+        original_text = item['text']
+        input_key = f"edit_text_{idx}"
+
+        default_value = st.session_state.edited_dialogues.get(input_key, original_text)
+
+        new_text = st.text_input(
+            f"{char_name} says:",
+            value=default_value,
+            key=input_key
+        )
+
+        st.session_state.edited_dialogues[input_key] = new_text
+
+        edited_dialogues.append({
+            "character_name": char_name,
+            "original_text": original_text,
+            "edited_text": new_text,
+            "confidence": item["confidence"]
+        })
+
+    if st.button("Show Final Narration Lines"):
+        st.markdown("### 🔊 Final Dialogue List:")
+        for entry in edited_dialogues:
+            st.markdown(f"**{entry['character_name']}**: {entry['edited_text']} _(Confidence: {entry['confidence']:.2f})_")
+
+    
+    if st.button("Generate Dia-formatted Output"):
+        st.markdown("### 📝 Dia-compatible Script Output")
+
+        # Generate speaker mapping (S1, S2, ...)
+        speaker_ids = {}
+        dia_script_lines = []
+        next_id = 1
+
+        for entry in edited_dialogues:
+            char_name = entry['character_name']
+            if char_name not in speaker_ids:
+                speaker_ids[char_name] = f"S{next_id}"
+                next_id += 1
+
+            speaker_tag = speaker_ids[char_name]
+            dia_script_lines.append(f"[{speaker_tag}] {entry['edited_text']}")
+
+        dia_script = "\n".join(dia_script_lines)
+
+    # Show editable textbox for user to copy/export
+    st.text_area("🗒️ Dia Script Output", dia_script, height=300)
 
 
-
-
-# st.markdown("### 📝 Step 4.5: Edit Assigned Dialogues")
-
-# # Initialize a session state to store editable dialogues
-# if "edited_dialogues" not in st.session_state:
-#     st.session_state.edited_dialogues = {}
-
-# edited_dialogues = []
-
-# for idx, item in enumerate(mapping_result):
-#     char_id = item['character_id']
-#     default_name = character_names.get(char_id, f"Character #{char_id}")
-#     original_text = item['text']
-
-#     # Generate unique key for Streamlit text input
-#     input_key = f"edit_text_{idx}"
-
-#     # Default value from session state or original
-#     default_value = st.session_state.edited_dialogues.get(input_key, original_text)
-
-#     # Render editable field
-#     new_text = st.text_input(
-#         f"{default_name} says:",
-#         value=default_value,
-#         key=input_key
-#     )
-
-#     # Update session state and tracking list
-#     st.session_state.edited_dialogues[input_key] = new_text
-
-#     edited_dialogues.append({
-#         "character_name": default_name,
-#         "original_text": original_text,
-#         "edited_text": new_text,
-#         "confidence": item["confidence"]
-#     })
-
-# # Optional: Show the final edited results
-# if st.button("Show Final Narration Lines"):
-#     st.markdown("### 🔊 Final Dialogue List:")
-#     for entry in edited_dialogues:
-#         st.markdown(f"**{entry['character_name']}**: {entry['edited_text']} _(Confidence: {entry['confidence']:.2f})_")
+else:
+    st.warning("❗ Please upload a valid image and run Steps 1 & 2 before proceeding to character mapping.")
