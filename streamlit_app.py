@@ -52,3 +52,70 @@ if dialogues and char_boxes:
         st.write(f"🗣️ Character #{item['character_id']} says: **{item['text']}** (Conf: {item['confidence']:.2f})")
 else:
     st.warning("Please run both dialogue and character detection before mapping.")
+
+
+# Character Naming (Step 4)
+if dialogues and char_boxes:
+    st.markdown("### 🏷️ Step 4: Assign Names to Characters")
+
+    # Initialize session state to persist character names
+    if "char_names" not in st.session_state:
+        st.session_state.char_names = {}
+
+    for idx, char in enumerate(char_boxes):
+        default_name = st.session_state.char_names.get(idx, f"Character {idx}")
+        name = st.text_input(f"Enter name for Character #{idx}:", value=default_name, key=f"char_name_{idx}")
+        st.session_state.char_names[idx] = name
+
+    st.markdown("---")
+    st.markdown("### 🗣️ Final Mapping with Character Names")
+
+    for item in mapping_result:
+        char_id = item['character_id']
+        name = st.session_state.char_names.get(char_id, f"Character {char_id}")
+        st.write(f"🗣️ **{name}** says: *{item['text']}* (Conf: {item['confidence']:.2f})")
+
+
+
+
+# st.markdown("### 📝 Step 4.5: Edit Assigned Dialogues")
+
+# # Initialize a session state to store editable dialogues
+# if "edited_dialogues" not in st.session_state:
+#     st.session_state.edited_dialogues = {}
+
+# edited_dialogues = []
+
+# for idx, item in enumerate(mapping_result):
+#     char_id = item['character_id']
+#     default_name = character_names.get(char_id, f"Character #{char_id}")
+#     original_text = item['text']
+
+#     # Generate unique key for Streamlit text input
+#     input_key = f"edit_text_{idx}"
+
+#     # Default value from session state or original
+#     default_value = st.session_state.edited_dialogues.get(input_key, original_text)
+
+#     # Render editable field
+#     new_text = st.text_input(
+#         f"{default_name} says:",
+#         value=default_value,
+#         key=input_key
+#     )
+
+#     # Update session state and tracking list
+#     st.session_state.edited_dialogues[input_key] = new_text
+
+#     edited_dialogues.append({
+#         "character_name": default_name,
+#         "original_text": original_text,
+#         "edited_text": new_text,
+#         "confidence": item["confidence"]
+#     })
+
+# # Optional: Show the final edited results
+# if st.button("Show Final Narration Lines"):
+#     st.markdown("### 🔊 Final Dialogue List:")
+#     for entry in edited_dialogues:
+#         st.markdown(f"**{entry['character_name']}**: {entry['edited_text']} _(Confidence: {entry['confidence']:.2f})_")
