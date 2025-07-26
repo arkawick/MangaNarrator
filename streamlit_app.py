@@ -66,64 +66,80 @@ if dialogues and char_boxes:
 
     st.session_state.character_names = character_names  # persist names
 
+
+
+    ####
     # Step 4.5: Editable Dialogue Text
     st.markdown("### 📝 Step 4.5: Edit Assigned Dialogues")
 
-    if 'edited_dialogues' not in st.session_state:
-        st.session_state.edited_dialogues = {}
+    # Initialize session state
+    if 'editable_lines' not in st.session_state:
+        st.session_state.editable_lines = []
 
-    edited_dialogues = []
+    # Populate for the first time using mapping_result
+    if not st.session_state.editable_lines and mapping_result:
+        for idx, item in enumerate(mapping_result):
+            char_id = item['character_id']
+            char_name = character_names.get(char_id, f"Character #{char_id}")
+            st.session_state.editable_lines.append({
+                'char_name': char_name,
+                'text': item['text'],
+                'confidence': item.get('confidence', 1.0)
+            })
 
-    for idx, item in enumerate(mapping_result):
-        char_id = item['character_id']
-        char_name = character_names.get(char_id, f"Character #{char_id}")
-        original_text = item['text']
-        input_key = f"edit_text_{idx}"
-
-        default_value = st.session_state.edited_dialogues.get(input_key, original_text)
-
-        new_text = st.text_input(
-            f"{char_name} says:",
-            value=default_value,
-            key=input_key
+    # Editable form section
+    updated_lines = []
+    for idx, line in enumerate(st.session_state.editable_lines):
+        st.markdown(f"#### ✏️ Dialogue #{idx + 1}")
+        
+        char_input = st.text_input(
+            label="Character Name",
+            value=line['char_name'],
+            key=f"char_{idx}"
         )
 
-        st.session_state.edited_dialogues[input_key] = new_text
+        text_input = st.text_input(
+            label="Dialogue Text",
+            value=line['text'],
+            key=f"text_{idx}"
+        )
 
-        edited_dialogues.append({
-            "character_name": char_name,
-            "original_text": original_text,
-            "edited_text": new_text,
-            "confidence": item["confidence"]
+        updated_lines.append({
+            'char_name': char_input,
+            'text': text_input,
+            'confidence': line.get('confidence', 1.0)
         })
+
+    # Update session state
+    st.session_state.editable_lines = updated_lines
+
+    if st.button("Clear All Dialogues"):
+        st.session_state.editable_lines = []
 
     if st.button("Show Final Narration Lines"):
         st.markdown("### 🔊 Final Dialogue List:")
-        for entry in edited_dialogues:
-            st.markdown(f"**{entry['character_name']}**: {entry['edited_text']} _(Confidence: {entry['confidence']:.2f})_")
+        for line in st.session_state.editable_lines:
+            st.markdown(f"**{line['char_name']}**: {line['text']}")
 
-    
     if st.button("Generate Dia-formatted Output"):
-        st.markdown("### 📝 Dia-compatible Script Output")
+        st.markdown("### 📜 Dia-compatible Script Output")
 
-        # Generate speaker mapping (S1, S2, ...)
-        speaker_ids = {}
-        dia_script_lines = []
-        next_id = 1
+        speaker_map = {}
+        dia_lines = []
+        next_speaker = 1
 
-        for entry in edited_dialogues:
-            char_name = entry['character_name']
-            if char_name not in speaker_ids:
-                speaker_ids[char_name] = f"S{next_id}"
-                next_id += 1
+        for line in st.session_state.editable_lines:
+            name = line['char_name'].strip()
+            if name not in speaker_map:
+                speaker_map[name] = f"S{next_speaker}"
+                next_speaker += 1
+            speaker = speaker_map[name]
+            dia_lines.append(f"[{speaker}] {line['text']}")
 
-            speaker_tag = speaker_ids[char_name]
-            dia_script_lines.append(f"[{speaker_tag}] {entry['edited_text']}")
+        dia_script = "\n".join(dia_lines)
 
-        dia_script = "\n".join(dia_script_lines)
-
-    # Show editable textbox for user to copy/export
-    st.text_area("🗒️ Dia Script Output", dia_script, height=300)
+        # Show editable output
+        st.text_area("🗒️ Dia Script Output", value=dia_script, height=300)
 
 
 else:
