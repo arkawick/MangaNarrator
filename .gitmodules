@@ -1,0 +1,3 @@
+[submodule "Text_To_Speech_with_dia/dia"]
+	path = Text_To_Speech_with_dia/dia
+	url = https://github.com/nari-labs/dia.git
